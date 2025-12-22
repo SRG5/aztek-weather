@@ -1,0 +1,3 @@
+After comparing the monthly costs across West Europe, North Europe, and Germany West Central (using the same service basket: Azure App Service + Azure Front Door + Azure Database for PostgreSQL Flexible Server), we selected North Europe as the primary deployment region.
+In this comparison, North Europe showed the lowest estimated monthly cost for the selected configuration. In addition, Azure Front Door provides a global entry point that helps reduce latency for users worldwide by leveraging Microsoft’s edge network.
+To meet the requirement for maximum availability and minimal impact from failures, the database is configured on the General Purpose tier with High Availability enabled, providing automatic failover and improved resiliency.

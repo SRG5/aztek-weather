@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h1 class="h4 mb-3">Get a forecast</h1>
+        <form method="post" action="/forecast" class="vstack gap-3">
+          <div>
+            <label class="form-label">Your name</label>
+            <input name="user_name" class="form-control" placeholder="Rotem" required />
+          </div>
+          <div>
+            <label class="form-label">City</label>
+            <input name="city" class="form-control" placeholder="Tel Aviv" required />
+            <div class="form-text">Tip: if ambiguous, try "London,GB".</div>
+          </div>
+          <button class="btn btn-primary">Get Forecast</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
