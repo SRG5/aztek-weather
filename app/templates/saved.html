@@ -1,31 +1,70 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h2 class="h4 mb-3">Saved forecasts</h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="h4 m-0">Saved forecasts</h2>
+  <a class="btn btn-outline-secondary btn-sm" href="/">Back</a>
+</div>
 
 {% if not rows %}
   <div class="alert alert-info">No saved forecasts yet.</div>
 {% else %}
   <div class="card shadow-sm">
     <div class="table-responsive">
-      <table class="table table-striped mb-0">
+      <table class="table table-striped align-middle mb-0">
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Created</th>
-            <th>User</th>
-            <th>City</th>
-            <th>Snapshot</th>
+            <th style="width: 70px;">ID</th>
+            <th style="width: 220px;">Created</th>
+            <th style="width: 140px;">User</th>
+            <th style="width: 180px;">City</th>
+            <th>Saved forecast (snapshot)</th>
           </tr>
         </thead>
         <tbody>
           {% for r in rows %}
+            {% set f = r.forecast_json or {} %}
+            {% set days = f.get("days", []) %}
             <tr>
               <td>{{ r.id }}</td>
-              <td>{{ r.created_at }}</td>
+              <td>
+                <div>{{ r.created_at }}</div>
+                {% if f.get("generated_at_utc") %}
+                  <div class="text-muted small">Generated: {{ f.get("generated_at_utc") }}</div>
+                {% endif %}
+              </td>
               <td>{{ r.user_name }}</td>
               <td>{{ r.city }}</td>
-              <td><code>{{ r.forecast_json.get("source", "saved") }}</code></td>
+              <td>
+                {% if days %}
+                  <div class="small text-muted mb-1">
+                    <span class="badge text-bg-secondary">{{ f.get("source", "OpenWeatherMap") }}</span>
+                    {% if f.get("country") %}
+                      <span class="ms-2">Country: {{ f.get("country") }}</span>
+                    {% endif %}
+                  </div>
+
+                  <ul class="mb-0">
+                    {% for d in days[:3] %}
+                      <li>
+                        <strong>{{ d.get("weekday", "") }}</strong>
+                        <span class="text-muted">({{ d.get("date", "") }})</span>:
+                        {{ d.get("temp_min") }}°C–{{ d.get("temp_max") }}°C
+                        <span class="text-muted">({{ d.get("description", "") }})</span>
+                      </li>
+                    {% endfor %}
+                  </ul>
+
+                  {% if days|length > 3 %}
+                    <div class="text-muted small mt-1">Showing first 3 days… ({{ days|length }} days saved)</div>
+                  {% else %}
+                    <div class="text-muted small mt-1">({{ days|length }} days saved)</div>
+                  {% endif %}
+                {% else %}
+                  <div class="text-muted">No forecast details found in saved JSON.</div>
+                  <code>{{ f.get("source", "saved") }}</code>
+                {% endif %}
+              </td>
             </tr>
           {% endfor %}
         </tbody>
