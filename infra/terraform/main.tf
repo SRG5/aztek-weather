@@ -88,7 +88,6 @@ resource "azurerm_linux_web_app" "web" {
     OPENWEATHER_API_KEY = var.openweather_api_key
     FLASK_SECRET_KEY    = var.flask_secret_key
     DATABASE_URL        = local.database_url
-    WEBSITE_HEALTHCHECK_MAXPINGFAILURES = "2"
 
     # Oryx build during deployment (GitHub Actions / zip deploy)
     SCM_DO_BUILD_DURING_DEPLOYMENT = "true"
