@@ -10,10 +10,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 ENV_PATH = Path(__file__).with_name(".env")
-load_dotenv(dotenv_path=ENV_PATH)
-print("dotenv path:", ENV_PATH, "exists:", ENV_PATH.exists())
-print("OPENWEATHER_API_KEY:", "OK" if os.getenv("OPENWEATHER_API_KEY") else "MISSING")
-
+if ENV_PATH.exists():
+    load_dotenv(dotenv_path=ENV_PATH)
 
 OPENWEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5/forecast"
 
