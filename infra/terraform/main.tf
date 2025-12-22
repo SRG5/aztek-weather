@@ -116,11 +116,10 @@ resource "null_resource" "deploy_app" {
   provisioner "local-exec" {
     interpreter = ["bash", "-lc"]
     command = <<EOT
-      az webapp deploy \
+      az webapp deployment source config-zip \
         --resource-group ${azurerm_resource_group.rg.name} \
         --name ${azurerm_linux_web_app.web.name} \
-        --src-path ${data.archive_file.app_zip.output_path} \
-        --type zip
+        --src ${data.archive_file.app_zip.output_path}
     EOT
   }
 }
