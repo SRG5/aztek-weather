@@ -81,7 +81,7 @@ resource "azurerm_linux_web_app" "web" {
 
     # App Service expects gunicorn for Flask by default if app.py exists.
     # We'll set it explicitly to be deterministic.
-    app_command_line = "gunicorn --bind=0.0.0.0 --timeout 600 app:app"
+    app_command_line = "gunicorn --bind=0.0.0.0:8080 --timeout 600 app:app"
   }
 
   app_settings = {
@@ -116,10 +116,11 @@ resource "null_resource" "deploy_app" {
   provisioner "local-exec" {
     interpreter = ["bash", "-lc"]
     command = <<EOT
-      az webapp deployment source config-zip \
+      az webapp deploy \
         --resource-group ${azurerm_resource_group.rg.name} \
         --name ${azurerm_linux_web_app.web.name} \
-        --src ${data.archive_file.app_zip.output_path}
+        --src-path ${data.archive_file.app_zip.output_path} \
+        --type zip
     EOT
   }
 }
