@@ -121,8 +121,7 @@ resource "azurerm_postgresql_flexible_server" "pg" {
   dynamic "high_availability" {
     for_each = var.postgres_ha_enabled ? [1] : []
     content {
-      mode                      = "ZoneRedundant"
-      standby_availability_zone = var.postgres_standby_zone
+      mode = "SameZone"
     }
   }
 
@@ -133,8 +132,7 @@ resource "azurerm_postgresql_flexible_server" "pg" {
   lifecycle {
     # After a failover, zones can swap. Ignore to avoid perpetual diffs.
     ignore_changes = [
-      zone,
-      high_availability[0].standby_availability_zone
+      zone
     ]
   }
 }
