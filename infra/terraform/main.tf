@@ -91,37 +91,11 @@ resource "azurerm_linux_web_app" "web" {
 
     # Oryx build during deployment (GitHub Actions / zip deploy)
     SCM_DO_BUILD_DURING_DEPLOYMENT = "true"
-    WEBSITE_RUN_FROM_PACKAGE = "1"
 
     APPLICATIONINSIGHTS_CONNECTION_STRING = azurerm_application_insights.appi.connection_string
   }
 
   tags = local.tags
-}
-
-data "archive_file" "app_zip" {
-  type        = "zip"
-  source_dir  = "${path.module}/../../app"
-  output_path = "/tmp/aztek-weather-app.zip"
-}
-
-resource "null_resource" "deploy_app" {
-  # Redeploy only when the zip content changes
-  triggers = {
-    zip_sha = data.archive_file.app_zip.output_sha
-  }
-
-  depends_on = [azurerm_linux_web_app.web]
-
-  provisioner "local-exec" {
-    interpreter = ["bash", "-lc"]
-    command = <<EOT
-      az webapp deployment source config-zip \
-        --resource-group ${azurerm_resource_group.rg.name} \
-        --name ${azurerm_linux_web_app.web.name} \
-        --src ${data.archive_file.app_zip.output_path}
-    EOT
-  }
 }
 
 resource "azurerm_postgresql_flexible_server" "pg" {
