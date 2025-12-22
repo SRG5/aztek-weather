@@ -1,3 +1,8 @@
+variable "subscription_id" {
+  type        = string
+  description = "d2cc2668-766e-4287-b55c-757156c5d652"
+}
+
 variable "project" {
   type    = string
   default = "aztek-weather"
