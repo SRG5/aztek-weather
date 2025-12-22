@@ -73,6 +73,7 @@ resource "azurerm_linux_web_app" "web" {
     minimum_tls_version = "1.2"
 
     health_check_path = "/health"
+    health_check_eviction_time_in_min = 5
 
     application_stack {
       python_version = var.python_version
