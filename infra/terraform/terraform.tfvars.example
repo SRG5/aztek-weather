@@ -1,0 +1,19 @@
+project        = "aztek-weather"
+env            = "dev"
+location       = "northeurope"
+location_short = "neu"
+
+python_version            = "3.12"
+app_service_sku           = "S1"
+app_service_worker_count  = 2
+
+postgres_version          = "16"
+postgres_sku_name         = "GP_Standard_D2s_v3"
+postgres_storage_mb       = 32768
+postgres_backup_retention_days = 7
+postgres_ha_enabled       = true
+postgres_primary_zone     = "1"
+postgres_standby_zone     = "2"
+
+allow_my_ip = false
+my_ip       = "X.X.X.X"
