@@ -35,7 +35,7 @@ ZIP="${data.archive_file.app_zip.output_path}"
 URL="https://${azurerm_linux_web_app.web.default_hostname}"
 
 echo "Waiting for SCM (Kudu) to be ready..."
-SCM="https://${APP}.scm.azurewebsites.net"
+SCM="https://${azurerm_linux_web_app.web.name}.scm.azurewebsites.net"
 for i in $(seq 1 60); do
   if curl -fsS "$SCM/api/settings" >/dev/null 2>&1; then
     echo "SCM is ready."
