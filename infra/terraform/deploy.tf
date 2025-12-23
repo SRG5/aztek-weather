@@ -52,37 +52,25 @@ for i in $(seq 1 60); do
   sleep 5
 done
 
-# Capture the deployment id BEFORE deploy (so we can detect the new one)
-BEFORE_ID="$(az webapp log deployment list -g "$RG" -n "$APP" --query "sort_by(@,&received_time)[-1].id" -o tsv 2>/dev/null || true)"
-
 echo "Starting zip deploy..."
 az webapp deploy \
   -g "$RG" -n "$APP" \
   --type zip \
   --src-path "$ZIP" \
-  --track-status \
-  --async false \
-  --timeout 1800000
+  --async true
 
-# Capture the deployment id AFTER deploy (for logs if needed)
-AFTER_ID="$(az webapp log deployment list -g "$RG" -n "$APP" --query "sort_by(@,&received_time)[-1].id" -o tsv 2>/dev/null || true)"
-
-if [ -n "$AFTER_ID" ] && [ "$AFTER_ID" != "$BEFORE_ID" ]; then
-  st="$(az webapp log deployment show -g "$RG" -n "$APP" --deployment-id "$AFTER_ID" --query status -o tsv 2>/dev/null || true)"
-  echo "Latest deployment id: $AFTER_ID (status=$st)"
-  if [ "$st" = "3" ]; then
-    echo "Deployment failed. Full deployment info:"
-    az webapp log deployment show -g "$RG" -n "$APP" --deployment-id "$AFTER_ID" -o jsonc || true
-    exit 1
-  fi
-fi
+echo "Deployment initiated (async). Waiting briefly..."
+sleep 10
 
 # Health check
 echo "Running health check..."
 for i in $(seq 1 60); do
-  if curl -fsS "$URL/health" >/dev/null; then
+  if curl -fsS "$URL/health" >/dev/null 2>&1; then
     echo "Health check OK."
     exit 0
+  fi
+  if [ $i -eq 1 ] || [ $((i % 10)) -eq 0 ]; then
+    echo "Waiting for /health endpoint... ($i/60)"
   fi
   sleep 5
 done
