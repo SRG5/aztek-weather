@@ -1,12 +1,3 @@
-terraform {
-  required_providers {
-    time = {
-      source  = "hashicorp/time"
-      version = "~> 0.12"
-    }
-  }
-}
-
 resource "time_sleep" "wait_for_scm" {
   depends_on      = [azurerm_linux_web_app.web]
   create_duration = "90s"
