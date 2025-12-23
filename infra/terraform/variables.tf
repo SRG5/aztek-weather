@@ -118,9 +118,3 @@ variable "frontdoor_sku_name" {
   description = "SKU for Azure Front Door (Standard_AzureFrontDoor or Premium_AzureFrontDoor)"
   default     = "Standard_AzureFrontDoor"
 }
-
-variable "waf_mode" {
-  type        = string
-  description = "WAF mode: Prevention or Detection"
-  default     = "Prevention"
-}

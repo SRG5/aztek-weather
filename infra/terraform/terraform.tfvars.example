@@ -20,4 +20,3 @@ my_ip       = "X.X.X.X"
 
 # Azure Front Door Configuration
 frontdoor_sku_name = "Standard_AzureFrontDoor"  # or Premium_AzureFrontDoor
-waf_mode           = "Prevention"                # or Detection
