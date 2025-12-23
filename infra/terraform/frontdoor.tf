@@ -76,7 +76,6 @@ resource "azurerm_cdn_frontdoor_firewall_policy" "waf" {
   sku_name                          = azurerm_cdn_frontdoor_profile.fd.sku_name
   enabled                           = true
   mode                              = var.waf_mode
-  redirect_url                      = var.waf_redirect_url
   custom_block_response_status_code = 403
   custom_block_response_body        = base64encode("Access denied by WAF policy")
 

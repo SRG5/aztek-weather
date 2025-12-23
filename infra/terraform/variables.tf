@@ -124,9 +124,3 @@ variable "waf_mode" {
   description = "WAF mode: Prevention or Detection"
   default     = "Prevention"
 }
-
-variable "waf_redirect_url" {
-  type        = string
-  description = "URL to redirect blocked requests (optional)"
-  default     = ""
-}
