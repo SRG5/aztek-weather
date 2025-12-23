@@ -17,3 +17,7 @@ output "postgres_fqdn" {
 output "postgres_db" {
   value = azurerm_postgresql_flexible_server_database.db.name
 }
+
+output "front_door_url" {
+  value = "https://${azurerm_cdn_frontdoor_endpoint.afd_ep.host_name}"
+}
