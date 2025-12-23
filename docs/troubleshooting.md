@@ -1,199 +1,103 @@
 ## Troubleshooting
 
-### Issue 1: Front Door Returns 404 or 5xx Errors
+### 1) Front Door shows 404 / “origin not found” (right after deploy)
 
-**Symptoms:**
-- Front Door URL shows "Origin not found" or 404
-- App Service URL works fine
-- Just deployed infrastructure
+**Symptoms**
+- Front Door URL fails but the App Service URL works
 
-**Diagnosis:**
+**What to do**
+- Give Front Door some time to propagate globally.
+- Verify the Web App is healthy:
+
 ```bash
-# Check Front Door deployment status
-az afd endpoint show \
-  --resource-group rg-aztek-weather-neu \
-  --profile-name fd-aztek-weather-neu-* \
-  --endpoint-name fd-endpoint-aztek-weather-neu-* \
-  --query deploymentStatus
+cd infra/terraform
+curl -fsS "$(terraform output -raw web_app_url)/health" && echo "web app OK"
 ```
 
-**Solution:**
-```
-If deploymentStatus is "NotStarted" or "InProgress":
-  → Wait 15-45 minutes for global propagation
-  → This is NORMAL behavior for Front Door
-  → App Service URL works during this time
-
-If deploymentStatus is "Succeeded" but still errors:
-  → Check origin health:
-    az afd origin show \
-      --resource-group rg-aztek-weather-neu \
-      --profile-name fd-aztek-weather-neu-* \
-      --origin-group-name og-aztek-weather \
-      --origin-name app-service \
-      --query healthProbeSettings
-
-  → Verify App Service is responding to /health endpoint
-```
-
-### Issue 2: Database Connection Failures
-
-**Symptoms:**
-- App logs show "could not connect to server"
-- `/health` endpoint returns `{"database": "disconnected"}`
-- 500 errors when saving forecasts
-
-**Diagnosis:**
+If you want to inspect Front Door resources:
 ```bash
-# Check PostgreSQL server status
-az postgres flexible-server show \
-  --resource-group rg-aztek-weather-neu \
-  --name psql-aztek-weather-neu-* \
-  --query state
-
-# Should be: "Ready"
+RG=$(terraform output -raw resource_group)
+az afd profile list -g "$RG" -o table
+az afd endpoint list -g "$RG" --profile-name "$(az afd profile list -g "$RG" --query "[0].name" -o tsv)" -o table
 ```
 
-**Solution:**
+---
 
-**A) Firewall Rules:**
+### 2) Saving forecasts fails (DB connectivity)
+
+**Symptoms**
+- “Failed to save forecast to the database” in the UI
+- `/saved` redirects back with an error
+
+**Checks**
+1) Verify `DATABASE_URL` is set in the Web App settings (Terraform sets it automatically):
 ```bash
-# Verify Azure services can access
-az postgres flexible-server firewall-rule list \
-  --resource-group rg-aztek-weather-neu \
-  --name psql-aztek-weather-neu-*
-
-# Should show rule with startIpAddress=0.0.0.0, endIpAddress=0.0.0.0
-# If missing, add:
-az postgres flexible-server firewall-rule create \
-  --resource-group rg-aztek-weather-neu \
-  --name psql-aztek-weather-neu-* \
-  --rule-name AllowAzureServices \
-  --start-ip-address 0.0.0.0 \
-  --end-ip-address 0.0.0.0
+RG=$(terraform output -raw resource_group)
+APP=$(terraform output -raw web_app_name)
+az webapp config appsettings list -g "$RG" -n "$APP" --query "[?name=='DATABASE_URL'].value" -o tsv
 ```
 
-**B) Connection String:**
+2) Verify PostgreSQL server is ready:
 ```bash
-# Verify DATABASE_URL in App Service settings
-az webapp config appsettings list \
-  --resource-group rg-aztek-weather-neu \
-  --name web-aztek-weather-neu-* \
-  | Select-String "DATABASE_URL"
-
-# Should contain: postgresql://pgadmin@<server>:...
+RG=$(terraform output -raw resource_group)
+PG=$(az postgres flexible-server list -g "$RG" --query "[0].name" -o tsv)
+az postgres flexible-server show -g "$RG" -n "$PG" --query "state" -o tsv
 ```
 
-**C) Admin Password:**
+3) Firewall rules: ensure Azure services access is allowed (Terraform creates it):
 ```bash
-# Verify Key Vault secret
-az keyvault secret show \
-  --vault-name kv-aztek-* \
-  --name postgres-admin-password \
-  --query value
-
-# If incorrect, update:
-az keyvault secret set \
-  --vault-name kv-aztek-* \
-  --name postgres-admin-password \
-  --value "YourNewComplexPassword123!"
-
-# Restart app
-az webapp restart --resource-group rg-aztek-weather-neu --name web-aztek-weather-neu-*
+az postgres flexible-server firewall-rule list -g "$RG" -n "$PG" -o table
 ```
 
-### Issue 3: Key Vault Access Denied
+---
 
-**Symptoms:**
-- App logs show "Vault access is forbidden"
-- Environment variables show empty values
-- App fails to start
+### 3) Key Vault “access denied” / secrets not resolving
 
-**Diagnosis:**
+**Symptoms**
+- App fails to start or env vars using Key Vault references are empty
+
+**Checks**
+- Confirm Managed Identity is enabled:
 ```bash
-# Check Managed Identity status
-az webapp identity show \
-  --resource-group rg-aztek-weather-neu \
-  --name web-aztek-weather-neu-* \
-  --query principalId
-
-# Should return a GUID
-# If null, Managed Identity is not enabled
+RG=$(terraform output -raw resource_group)
+APP=$(terraform output -raw web_app_name)
+az webapp identity show -g "$RG" -n "$APP" --query "principalId" -o tsv
 ```
 
-**Solution:**
+- Confirm Key Vault policy exists for the Web App identity (Terraform sets it):
 ```bash
-# Enable Managed Identity
-az webapp identity assign \
-  --resource-group rg-aztek-weather-neu \
-  --name web-aztek-weather-neu-*
-
-# Get principal ID
-$PRINCIPAL_ID = (az webapp identity show --resource-group rg-aztek-weather-neu --name web-aztek-weather-neu-* --query principalId -o tsv)
-
-# Grant Key Vault access
-az keyvault set-policy \
-  --name kv-aztek-* \
-  --object-id $PRINCIPAL_ID \
-  --secret-permissions get list
-
-# Restart app
-az webapp restart --resource-group rg-aztek-weather-neu --name web-aztek-weather-neu-*
+KV=$(az keyvault list -g "$RG" --query "[0].name" -o tsv)
+az keyvault show -g "$RG" -n "$KV" --query "properties.accessPolicies" -o jsonc
 ```
 
-### Issue 4: Terraform State Lock
+---
 
-**Symptoms:**
-- Terraform commands fail with "state locked"
-- Previous `terraform apply` was interrupted (Ctrl+C)
+### 4) Deployment succeeded but app doesn’t respond
 
-**Solution:**
+**Steps**
+1) Stream logs:
 ```bash
-# Force unlock (use with caution!)
-terraform force-unlock <LOCK_ID>
-
-# LOCK_ID is shown in error message
-
-# If state is corrupted:
-terraform state pull > backup.tfstate
-terraform state push backup.tfstate  # Only if needed
+az webapp log tail -g "$RG" -n "$APP"
 ```
 
-### Issue 5: Application Not Starting
-
-**Symptoms:**
-- App Service shows "Application Error"
-- Logs show "ModuleNotFoundError" or similar
-
-**Diagnosis:**
+2) Confirm runtime:
 ```bash
-# Check startup logs
-az webapp log tail --resource-group rg-aztek-weather-neu --name web-aztek-weather-neu-*
-
-# Look for:
-# - Python version mismatch
-# - Missing dependencies
-# - Startup command errors
+az webapp config show -g "$RG" -n "$APP" --query "linuxFxVersion" -o tsv
 ```
 
-**Solution:**
+3) Redeploy app:
 ```bash
-# Verify startup command
-az webapp config show \
-  --resource-group rg-aztek-weather-neu \
-  --name web-aztek-weather-neu-* \
-  --query linuxFxVersion
-
-# Should be: PYTHON|3.12
-
-# Redeploy application
 cd infra/terraform
 terraform apply -target=null_resource.deploy_app
-
-# Or manually:
-cd app
-az webapp up \
-  --resource-group rg-aztek-weather-neu \
-  --name web-aztek-weather-neu-* \
-  --runtime "PYTHON:3.12"
 ```
+
+---
+
+### 5) Terraform state lock
+
+If a previous run was interrupted and Terraform is locked:
+```bash
+terraform force-unlock <LOCK_ID>
+```
+
+`<LOCK_ID>` appears in the error message.
