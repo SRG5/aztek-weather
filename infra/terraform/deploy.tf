@@ -42,13 +42,14 @@ ZIP="${data.archive_file.app_zip.output_path}"
 URL="https://${azurerm_linux_web_app.web.default_hostname}"
 
 echo "Waiting for SCM (Kudu) to be ready..."
-SCM="https://${azurerm_linux_web_app.web.name}.scm.azurewebsites.net"
+SCM="https://${APP}.scm.azurewebsites.net"
 for i in $(seq 1 60); do
-  if curl -fsS "$SCM/api/settings" >/dev/null 2>&1; then
-    echo "SCM is ready."
+  code="$(curl -s -o /dev/null -w "%{http_code}" -I "$SCM/")"
+  if [ "$code" = "200" ] || [ "$code" = "401" ] || [ "$code" = "403" ]; then
+    echo "SCM is ready (HTTP $code)."
     break
   fi
-  echo "Waiting for SCM... ($i/60)"
+  echo "Waiting for SCM... ($i/60) (HTTP $code)"
   sleep 5
 done
 
@@ -68,7 +69,7 @@ az webapp deploy \
 AFTER_ID="$(az webapp log deployment list -g "$RG" -n "$APP" --query "sort_by(@,&received_time)[-1].id" -o tsv 2>/dev/null || true)"
 
 if [ -n "$AFTER_ID" ] && [ "$AFTER_ID" != "$BEFORE_ID" ]; then
-  st="$(az webapp log deployment show -g "$RG" -n "$APP" --deployment-id "$AFTER_ID" --query status -o tsv 2>/dev/null || true)"
+  st="$(az webapp log deployment show -g "$RG" -n "$APP" --deployment-id "$AFTER_ID" --query "properties.status" -o tsv 2>/dev/null || true)"
   echo "Latest deployment id: $AFTER_ID (status=$st)"
   if [ "$st" = "3" ]; then
     echo "Deployment failed. Full deployment info:"
