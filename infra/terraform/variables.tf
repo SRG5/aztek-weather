@@ -111,3 +111,22 @@ variable "my_ip" {
   type    = string
   default = ""
 }
+
+# Azure Front Door
+variable "frontdoor_sku_name" {
+  type        = string
+  description = "SKU for Azure Front Door (Standard_AzureFrontDoor or Premium_AzureFrontDoor)"
+  default     = "Standard_AzureFrontDoor"
+}
+
+variable "waf_mode" {
+  type        = string
+  description = "WAF mode: Prevention or Detection"
+  default     = "Prevention"
+}
+
+variable "waf_redirect_url" {
+  type        = string
+  description = "URL to redirect blocked requests (optional)"
+  default     = ""
+}

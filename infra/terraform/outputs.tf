@@ -10,6 +10,15 @@ output "web_app_url" {
   value = "https://${azurerm_linux_web_app.web.default_hostname}"
 }
 
+output "frontdoor_endpoint_url" {
+  value       = "https://${azurerm_cdn_frontdoor_endpoint.endpoint.host_name}"
+  description = "Front Door endpoint URL (use this for accessing the application)"
+}
+
+output "frontdoor_profile_name" {
+  value = azurerm_cdn_frontdoor_profile.fd.name
+}
+
 output "postgres_fqdn" {
   value = azurerm_postgresql_flexible_server.pg.fqdn
 }

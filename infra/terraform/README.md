@@ -6,6 +6,16 @@ Creates:
 - Azure Database for PostgreSQL Flexible Server + DB (HA Zone Redundant)
 - Application Insights + Log Analytics
 - PostgreSQL firewall rule to allow Azure services (0.0.0.0-0.0.0.0)
+- **Azure Front Door** with WAF protection (global CDN endpoint)
+
+## Architecture
+
+```
+Users → Azure Front Door (WAF) → App Service → PostgreSQL
+         ↓
+     Edge Locations
+     (Global CDN)
+```
 
 ## Run from Azure Cloud Shell
 
