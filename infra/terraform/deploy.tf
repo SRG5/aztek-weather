@@ -6,7 +6,7 @@ resource "time_sleep" "wait_for_scm" {
 data "archive_file" "app_zip" {
   type        = "zip"
   source_dir  = "${path.module}/../../app"
-  output_path = "/tmp/aztek-weather-app.zip"
+  output_path = "${path.module}/.build/aztek-weather-app.zip"
 
   excludes = [
     "**/.venv/**",
@@ -17,12 +17,19 @@ data "archive_file" "app_zip" {
   ]
 }
 
+resource "null_resource" "ensure_build_dir" {
+  provisioner "local-exec" {
+    interpreter = ["bash", "-lc"]
+    command     = "mkdir -p ${path.module}/.build"
+  }
+}
+
 resource "null_resource" "deploy_app" {
   triggers = {
     zip_sha = data.archive_file.app_zip.output_sha
   }
 
-  depends_on = [time_sleep.wait_for_scm]
+  depends_on = [time_sleep.wait_for_scm, null_resource.ensure_build_dir]
 
   provisioner "local-exec" {
     interpreter = ["bash", "-lc"]
