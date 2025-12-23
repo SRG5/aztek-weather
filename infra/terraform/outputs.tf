@@ -19,6 +19,16 @@ output "frontdoor_profile_name" {
   value = azurerm_cdn_frontdoor_profile.fd.name
 }
 
+output "key_vault_name" {
+  value       = azurerm_key_vault.kv.name
+  description = "Key Vault name for secure secrets storage"
+}
+
+output "app_service_identity" {
+  value       = azurerm_linux_web_app.web.identity[0].principal_id
+  description = "App Service Managed Identity Principal ID"
+}
+
 output "postgres_fqdn" {
   value = azurerm_postgresql_flexible_server.pg.fqdn
 }

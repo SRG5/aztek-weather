@@ -85,8 +85,9 @@ resource "azurerm_linux_web_app" "web" {
   }
 
   app_settings = {
-    OPENWEATHER_API_KEY = var.openweather_api_key
-    FLASK_SECRET_KEY    = var.flask_secret_key
+    # Using Key Vault references for secure secret management
+    OPENWEATHER_API_KEY = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.openweather_api_key.id})"
+    FLASK_SECRET_KEY    = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.flask_secret_key.id})"
     DATABASE_URL        = local.database_url
 
     # Oryx build during deployment (GitHub Actions / zip deploy)
