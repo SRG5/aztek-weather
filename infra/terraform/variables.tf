@@ -1,7 +1,7 @@
 variable "subscription_id" {
   type        = string
   description = "Azure Subscription ID"
-  default     = "d2cc2668-766e-4287-b55c-757156c5d652"
+  default     = ""
 }
 
 variable "project" {
