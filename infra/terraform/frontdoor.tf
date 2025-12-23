@@ -56,10 +56,9 @@ resource "azurerm_cdn_frontdoor_route" "route_all" {
   enabled                = true
   link_to_default_domain = true
 
-  cdn_frontdoor_custom_domain_ids = []
-
   patterns_to_match   = ["/*"]
   supported_protocols = ["Https"]
+  https_redirect_enabled = false
   forwarding_protocol = "HttpsOnly"
 
   lifecycle {
