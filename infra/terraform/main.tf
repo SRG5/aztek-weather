@@ -81,7 +81,7 @@ resource "azurerm_linux_web_app" "web" {
 
     # App Service expects gunicorn for Flask by default if app.py exists.
     # We'll set it explicitly to be deterministic.
-    app_command_line = "gunicorn --bind=0.0.0.0:8080 --timeout 600 app:app"
+    app_command_line = "gunicorn --bind=0.0.0.0:$PORT --timeout 600 app:app"
   }
 
   app_settings = {
