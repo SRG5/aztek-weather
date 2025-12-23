@@ -1,12 +1,9 @@
-resource "null_resource" "ensure_build_dir" {
-  provisioner "local-exec" {
-    interpreter = ["bash", "-lc"]
-    command     = "mkdir -p ${path.module}/.build"
-  }
+resource "time_sleep" "wait_for_scm" {
+  depends_on      = [azurerm_linux_web_app.web]
+  create_duration = "90s"
 }
 
 data "archive_file" "app_zip" {
-  depends_on  = [null_resource.ensure_build_dir]
   type        = "zip"
   source_dir  = "${path.module}/../../app"
   output_path = "${path.module}/.build/aztek-weather-app.zip"
@@ -20,9 +17,11 @@ data "archive_file" "app_zip" {
   ]
 }
 
-resource "time_sleep" "wait_for_scm" {
-  depends_on      = [azurerm_linux_web_app.web]
-  create_duration = "90s"
+resource "null_resource" "ensure_build_dir" {
+  provisioner "local-exec" {
+    interpreter = ["bash", "-lc"]
+    command     = "mkdir -p ${path.module}/.build"
+  }
 }
 
 resource "null_resource" "deploy_app" {
@@ -30,7 +29,7 @@ resource "null_resource" "deploy_app" {
     zip_sha = data.archive_file.app_zip.output_sha
   }
 
-  depends_on = [time_sleep.wait_for_scm]
+  depends_on = [time_sleep.wait_for_scm, null_resource.ensure_build_dir]
 
   provisioner "local-exec" {
     interpreter = ["bash", "-lc"]
@@ -43,44 +42,42 @@ ZIP="${data.archive_file.app_zip.output_path}"
 URL="https://${azurerm_linux_web_app.web.default_hostname}"
 
 echo "Waiting for SCM (Kudu) to be ready..."
-SCM="https://$APP.scm.azurewebsites.net"
+SCM="https://${azurerm_linux_web_app.web.name}.scm.azurewebsites.net"
 for i in $(seq 1 60); do
-  code="$(curl -s -o /dev/null -w "%%{http_code}" -I "$SCM/")"
-  if [ "$code" = "200" ] || [ "$code" = "401" ] || [ "$code" = "403" ]; then
-    echo "SCM is ready (HTTP $code)."
+  if curl -fsS "$SCM/api/settings" >/dev/null 2>&1; then
+    echo "SCM is ready."
     break
   fi
-  echo "Waiting for SCM... ($i/60) (HTTP $code)"
+  echo "Waiting for SCM... ($i/60)"
   sleep 5
 done
 
+# Capture the deployment id BEFORE deploy (so we can detect the new one)
+BEFORE_ID="$(az webapp log deployment list -g "$RG" -n "$APP" --query "sort_by(@,&received_time)[-1].id" -o tsv 2>/dev/null || true)"
+
 echo "Starting zip deploy..."
-# חשוב: 504 לפעמים מגיע מה-CLI שמחכה יותר מדי. אז עושים async ואז פולינג.
 az webapp deploy \
   -g "$RG" -n "$APP" \
   --type zip \
   --src-path "$ZIP" \
-  --async true \
+  --track-status \
+  --async false \
   --timeout 1800000
 
-echo "Polling deployment status..."
-for i in $(seq 1 180); do
-  DEPLOY_ID="$(az webapp log deployment list -g "$RG" -n "$APP" --query "sort_by(@,&received_time)[-1].id" -o tsv 2>/dev/null || true)"
-  if [ -n "$DEPLOY_ID" ]; then
-    STATUS_TEXT="$(az webapp log deployment show -g "$RG" -n "$APP" --deployment-id "$DEPLOY_ID" --query "properties.statusText" -o tsv 2>/dev/null || true)"
-    echo "Deployment: $DEPLOY_ID statusText=$STATUS_TEXT"
-    if [ "$STATUS_TEXT" = "Success" ] || [ "$STATUS_TEXT" = "Successful" ]; then
-      break
-    fi
-    if [ "$STATUS_TEXT" = "Failed" ]; then
-      echo "Deployment failed. Details:"
-      az webapp log deployment show -g "$RG" -n "$APP" --deployment-id "$DEPLOY_ID" -o jsonc || true
-      exit 1
-    fi
-  fi
-  sleep 5
-done
+# Capture the deployment id AFTER deploy (for logs if needed)
+AFTER_ID="$(az webapp log deployment list -g "$RG" -n "$APP" --query "sort_by(@,&received_time)[-1].id" -o tsv 2>/dev/null || true)"
 
+if [ -n "$AFTER_ID" ] && [ "$AFTER_ID" != "$BEFORE_ID" ]; then
+  st="$(az webapp log deployment show -g "$RG" -n "$APP" --deployment-id "$AFTER_ID" --query status -o tsv 2>/dev/null || true)"
+  echo "Latest deployment id: $AFTER_ID (status=$st)"
+  if [ "$st" = "3" ]; then
+    echo "Deployment failed. Full deployment info:"
+    az webapp log deployment show -g "$RG" -n "$APP" --deployment-id "$AFTER_ID" -o jsonc || true
+    exit 1
+  fi
+fi
+
+# Health check
 echo "Running health check..."
 for i in $(seq 1 60); do
   if curl -fsS "$URL/health" >/dev/null; then
@@ -91,6 +88,7 @@ for i in $(seq 1 60); do
 done
 
 echo "Deployed, but /health not responding."
+echo "Tip: check container logs / app logs if health endpoint depends on DB, env vars, etc."
 exit 1
 EOT
   }
