@@ -59,13 +59,9 @@ Why JSONB?
 
 ---
 
-## Run locally (high level)
-1. Create and activate a virtual environment.
-2. Install requirements.
-3. Set `OPENWEATHER_API_KEY` and `DATABASE_URL`.
-4. Run the app.
+## Run locally
 
-> Exact commands will be added once the code skeleton is generated.
+See `docs/runbook.md` for the exact local development steps.
 
 ---
 

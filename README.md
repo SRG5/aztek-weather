@@ -1,72 +1,96 @@
-# Aztek Weather ☁️
+# Aztek Weather
 
-Modern weather forecast application with global distribution and enterprise-grade cloud architecture.
+A small **Flask** web application built for the Aztek Technologies home assignment.
 
-## 🌍 Overview
+Users enter **name** + **city**, the app fetches a **multi‑day forecast** from **OpenWeatherMap (free plan)**, renders it in a simple UI, and can **save a forecast snapshot** into **PostgreSQL**.
 
-5-day weather forecasts for cities worldwide, powered by:
-- ✅ **Azure Front Door** - Global distribution with 120+ edge locations
-- ✅ **High Availability** - Multi-instance app service with database HA
-- ✅ **Security Hardening** - Managed Identity + Key Vault
-- ✅ **Infrastructure as Code** - Full Terraform automation
+## Repository structure
 
-## ✨ Features
+- `app/` — Flask app (UI + OpenWeather + PostgreSQL save)
+- `infra/terraform/` — Azure infrastructure (Terraform) + automated zip deployment
+- `docs/` — Architecture / runbook / region choice / troubleshooting
+- `ai/` — AI prompts log (step 10 requirement)
 
-- 🔍 City search (global coverage)
-- 📅 5-day forecast with detailed metrics
-- 💾 Save and view forecast history
-- ⚡ < 50ms latency worldwide
-- 🔒 HTTPS everywhere with zero secrets in code
+## High-level architecture
 
-## 🛠️ Technology Stack
+- **Azure App Service (Linux, Python 3.12)** hosts the Flask app
+- **Azure Database for PostgreSQL Flexible Server** stores saved forecasts
+- **Azure Front Door Standard** provides a single global HTTPS entry point
+- **Azure Key Vault** stores secrets (OpenWeather, Flask secret, Postgres admin password)
+- **Application Insights + Log Analytics** for monitoring
 
-**Backend:** Python 3.12 | Flask 3.0+ | Gunicorn  
-**Database:** PostgreSQL 16 Flexible Server  
-**Cloud:** Microsoft Azure  
-**IaC:** Terraform 1.6+  
-**CDN:** Azure Front Door Standard  
-**APIs:** OpenWeather API
+See: `docs/architecture.md`
 
----
+## Run locally
 
-## 🚀 Quick Start
+### Prerequisites
 
-### Local Development
+- Python 3.12+
+- OpenWeatherMap API key
+- Optional: PostgreSQL (required only for the **Save** and **Saved** pages)
+
+### Steps
+
 ```bash
 cd app
-python -m venv venv
-source venv/bin/activate  # Windows: .\venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+
+cp .env.example .env
+# edit app/.env with your values (do not commit)
+
 python app.py
 ```
 
-📖 **[Complete Setup Guide](docs/runbook.md#local-development)**
+Open:
+- `http://127.0.0.1:5000/`
+- `http://127.0.0.1:5000/health`
 
-### Azure Deployment
+## Deploy to Azure (Terraform)
+
+### Prerequisites
+
+- Azure subscription + permissions to create resources
+- Azure CLI authenticated (`az login`)
+- Terraform v1.6+
+
+### Steps
+
 ```bash
 cd infra/terraform
+cp terraform.tfvars.example terraform.tfvars
+
+# Fill placeholders in terraform.tfvars (NO real secrets should be committed)
+
 terraform init
-terraform plan -out=tfplan
-terraform apply tfplan
+terraform apply
 ```
 
-📖 **[Full Deployment Guide](docs/runbook.md#azure-deployment)**
+Terraform will:
+1. Provision Azure resources.
+2. Package `app/` as a zip (`archive_file`).
+3. Deploy the zip using Azure CLI (`az webapp deploy`) during `terraform apply`.
 
----
+### Outputs
 
-## 📚 Documentation
+```bash
+terraform output -raw frontdoor_endpoint_url
+terraform output -raw web_app_url
+```
 
-| Document | Description |
-|----------|-------------|
-| **[Architecture](docs/architecture.md)** | System design, components, data flow, security architecture |
-| **[Runbook](docs/runbook.md)** | Deployment steps, troubleshooting, monitoring, maintenance |
-| **[Region Choice](docs/region-choice.md)** | Azure region selection, cost analysis, latency optimization |
+### Clean up
 
----
+```bash
+terraform destroy
+```
 
-## 📝 Project Info
+## AI usage log (Step 10)
 
-**Version:** 1.0.0  
-**Status:** Production Ready  
-**Cost:** ~$410-440/month  
-**Location:** North Europe (northeurope)
+The required prompts/instructions log is here:
+- `ai/prompts.md`
+
+## Notes (assignment-oriented)
+
+- The database uses public network access + firewall rules for simplicity in this assignment.
+- Multi-region active/active is not implemented; Front Door is used as a stable global entry point.
