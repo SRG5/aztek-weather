@@ -48,7 +48,7 @@ resource "azurerm_cdn_frontdoor_origin" "origin_webapp" {
 }
 
 resource "azurerm_cdn_frontdoor_route" "route_all" {
-  name                          = "route-all"
+  name                          = "route-main"
   cdn_frontdoor_endpoint_id     = azurerm_cdn_frontdoor_endpoint.afd_ep.id
   cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.og.id
   cdn_frontdoor_origin_ids      = [azurerm_cdn_frontdoor_origin.origin_webapp.id]
@@ -56,8 +56,14 @@ resource "azurerm_cdn_frontdoor_route" "route_all" {
   enabled                = true
   link_to_default_domain = true
 
-  patterns_to_match      = ["/*"]
-  supported_protocols    = ["Http", "Https"]
-  forwarding_protocol    = "HttpsOnly"
-  https_redirect_enabled = true
+  cdn_frontdoor_custom_domain_ids = []
+
+  patterns_to_match   = ["/*"]
+  supported_protocols = ["Https"]
+  forwarding_protocol = "HttpsOnly"
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
+
