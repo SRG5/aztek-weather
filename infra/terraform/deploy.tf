@@ -44,7 +44,7 @@ URL="https://${azurerm_linux_web_app.web.default_hostname}"
 echo "Waiting for SCM (Kudu) to be ready..."
 SCM="https://${APP}.scm.azurewebsites.net"
 for i in $(seq 1 60); do
-  code="$(curl -s -o /dev/null -w "%{http_code}" -I "$SCM/")"
+  code="$(curl -s -o /dev/null -w "%%{http_code}" -I "$SCM/")"
   if [ "$code" = "200" ] || [ "$code" = "401" ] || [ "$code" = "403" ]; then
     echo "SCM is ready (HTTP $code)."
     break
